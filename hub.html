@@ -1235,6 +1235,7 @@ function startAssessment() {
     tools:   orderedKeys,   // 선택한 전체 도구 목록
     ready:   readyKeys,     // 실제 이동 가능한 도구 목록
     current: 0,             // 현재 도구 인덱스 (ready 기준)
+    reportByTool: {},      // 종합 보고서용 도구별 HTML 스냅샷
   };
 
   try { sessionStorage.setItem('ot_session', JSON.stringify(session)); } catch(e) {}
@@ -1278,6 +1279,19 @@ window.addEventListener('DOMContentLoaded', () => {
       }));
     } catch(e) {}
   });
+
+  /* 전체 평가 완료 후 종합 보고서 다시 열기 */
+  try {
+    const s = JSON.parse(sessionStorage.getItem('ot_session') || '{}');
+    const r = s.ready || [];
+    const rb = s.reportByTool || {};
+    if (r.length && r.every(k => rb[k] && rb[k].html)) {
+      const ban = document.createElement('div');
+      ban.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:200;display:flex;align-items:center;gap:14px;padding:14px 20px;background:#1E1B3A;color:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.2);font-size:13px;font-weight:600;max-width:calc(100% - 32px);';
+      ban.innerHTML = '<span style="flex:1;min-width:0;">종합 결과보고서(PDF)를 다시 열 수 있어요</span><button type="button" onclick="location.href=\'report.html\'" style="flex-shrink:0;padding:10px 16px;border-radius:11px;border:none;background:#6C5CE7;color:#fff;font-weight:800;cursor:pointer;font-size:13px;">열기</button>';
+      document.body.appendChild(ban);
+    }
+  } catch (e) {}
 });
 </script>
 </body>

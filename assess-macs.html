@@ -541,14 +541,7 @@ textarea.form-input {
   <div class="nav-info" id="nav-info">
     <span class="not-sel">레벨 미선택</span>
   </div>
-  <button class="btn-pdf" id="btn-pdf" onclick="exportPDF()">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <polyline points="6 9 6 2 18 2 18 9" stroke-width="1.5"/>
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke-width="1.5"/>
-      <rect x="6" y="14" width="12" height="8" stroke-width="1.5"/>
-    </svg>
-    PDF 출력
-  </button>
+  <span style="font-size:11px;color:var(--t3);max-width:200px;text-align:right;line-height:1.35;">PDF는 전체 평가 완료 후 종합 보고서에서 저장</span>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -768,40 +761,28 @@ function updateResultBar() {
 
 function updateNav() {
   const navInfo = document.getElementById('nav-info');
-  const pdfBtn  = document.getElementById('btn-pdf');
   if (selectedLevel !== null) {
     const lv = MACS_LEVELS[selectedLevel - 1];
     navInfo.innerHTML = `<span class="sel" style="color:${lv.color}">Level ${lv.num} ${lv.roman}</span> 선택됨`;
-    pdfBtn.classList.add('selected');
   } else {
     navInfo.innerHTML = `<span class="not-sel">레벨 미선택</span>`;
-    pdfBtn.classList.remove('selected');
   }
 }
 
 /* ═══════════════════════════════════════
-   PDF 출력
+   종합 보고서용 HTML 스냅샷
 ═══════════════════════════════════════ */
-function exportPDF() {
+const REPORT_SECTION_TITLE = '손기능 분류체계 (MACS)';
+
+function buildToolReportHtml() {
   const name      = document.getElementById('f-name').value.trim()      || '(미입력)';
   const date      = document.getElementById('f-date').value             || '';
-  const therapist = document.getElementById('f-therapist').value.trim() || '';
   const diagnosis = document.getElementById('f-diagnosis').value.trim() || '—';
   const note      = document.getElementById('f-note').value.trim();
-  const today     = new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
-
-  // PDF 헤더
-  document.getElementById('pdf-header').style.display = 'flex';
-  document.getElementById('pdf-meta').innerHTML =
-    `작성일: ${today}<br><strong>푸르메재단 넥슨어린이재활병원</strong><br>담당: ${therapist}`;
-
-  // PDF 요약
-  const summaryEl = document.getElementById('pdf-summary');
-  summaryEl.style.display = 'block';
 
   if (selectedLevel !== null) {
     const lv = MACS_LEVELS[selectedLevel - 1];
-    summaryEl.innerHTML = `
+    return `
       <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;
         background:${lv.dim};border-radius:10px;border:1px solid ${lv.color}40;margin-bottom:18px;">
         <div style="width:60px;height:60px;border-radius:10px;
@@ -823,30 +804,9 @@ function exportPDF() {
       ${note ? `<div style="padding:10px 14px;background:#f5f5f5;border-radius:8px;
         border-left:3px solid ${lv.color};font-size:12px;color:#4A4770;line-height:1.6;margin-bottom:14px;">
         <strong>Comment:</strong> ${note}</div>` : ''}`;
-  } else {
-    summaryEl.innerHTML = `<div style="padding:12px 16px;background:#f5f5f5;border-radius:8px;
-      font-size:13px;color:#9896B8;text-align:center;">레벨 미선택</div>`;
   }
-
-  // 서명란
-  if (!document.getElementById('sign-area')) {
-    const div = document.createElement('div');
-    div.id = 'sign-area'; div.className = 'sign-area';
-    div.innerHTML = `
-      <div class="sign-box">
-        <div class="sign-label">담당 작업치료사</div>
-        <div class="sign-line">${therapist || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'} (서명)</div>
-      </div>`;
-    document.querySelector('.page').appendChild(div);
-  }
-
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => {
-      document.getElementById('pdf-header').style.display  = 'none';
-      document.getElementById('pdf-summary').style.display = 'none';
-    }, 600);
-  }, 200);
+  return `<div style="padding:12px 16px;background:#f5f5f5;border-radius:8px;
+    font-size:13px;color:#9896B8;text-align:center;">레벨 미선택</div>`;
 }
 
 /* ═══════════════════════════════════════
@@ -874,6 +834,18 @@ function getSession() {
   try { return JSON.parse(sessionStorage.getItem('ot_session') || '{}'); } catch(e) { return {}; }
 }
 
+function persistToolReport() {
+  try {
+    const sess = getSession();
+    if (!sess.reportByTool) sess.reportByTool = {};
+    sess.reportByTool[window._TOOL_ID] = {
+      title: REPORT_SECTION_TITLE,
+      html: typeof buildToolReportHtml === 'function' ? buildToolReportHtml() : ''
+    };
+    sessionStorage.setItem('ot_session', JSON.stringify(sess));
+  } catch (e) {}
+}
+
 function getCurrentToolIndex() {
   const sess = getSession();
   const ready = sess.ready || [];
@@ -882,6 +854,7 @@ function getCurrentToolIndex() {
 }
 
 function goNextTool() {
+  persistToolReport();
   const sess = getSession();
   const ready = sess.ready || [];
   const cur   = getCurrentToolIndex();
@@ -897,8 +870,7 @@ function goNextTool() {
     const route = ROUTE_MAP[nextId];
     if (route) window.location.href = route;
   } else {
-    // 마지막 도구 → 허브로 복귀
-    window.location.href = 'hub.html';
+    window.location.href = 'report.html';
   }
 }
 

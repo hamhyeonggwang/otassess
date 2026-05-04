@@ -894,14 +894,7 @@ textarea.form-input {
       <path d="M5 12h14M12 5l7 7-7 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </button>
-  <button class="btn-pdf" id="btn-pdf" style="display:none;" onclick="exportPDF()">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <polyline points="6 9 6 2 18 2 18 9" stroke-width="1.5"/>
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke-width="1.5"/>
-      <rect x="6" y="14" width="12" height="8" stroke-width="1.5"/>
-    </svg>
-    PDF 출력
-  </button>
+  <span class="nav-pdf-hint" style="font-size:11px;color:var(--t3);max-width:180px;text-align:right;line-height:1.35;">PDF는 전체 평가 완료 후 종합 보고서에서 저장</span>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1208,57 +1201,29 @@ function updateUI() {
   /* 네비 버튼 */
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
-  const btnPDF  = document.getElementById('btn-pdf');
   btnPrev.style.display = n > 0 ? 'flex' : 'none';
   btnNext.style.display = n < 3 ? 'flex' : 'none';
-  btnPDF.style.display  = n === 3 ? 'flex' : 'none';
 
   document.getElementById('nav-step-cur').textContent = n + 1;
 }
 
 /* ═══════════════════════════════════════════
-   PDF 출력
+   종합 보고서용 HTML 스냅샷
 ═══════════════════════════════════════════ */
-function exportPDF() {
-  /* PDF 헤더 채우기 */
-  const name      = document.getElementById('f-name').value.trim() || '(이름 미입력)';
-  const date      = document.getElementById('f-date').value || '';
-  const therapist = document.getElementById('f-therapist').value.trim() || '';
-  const today     = new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
+const REPORT_SECTION_TITLE = '작업치료 수행분석 (OTIPM · Motor·Process·Social)';
 
-  document.getElementById('pdf-header').style.display = 'flex';
-  document.getElementById('pdf-header-right').innerHTML =
-    `작성일: ${today}<br><strong>푸르메재단 넥슨어린이재활병원</strong><br>담당: ${therapist}`;
-
-  /* 모든 스텝 표시 */
+function buildToolReportHtml() {
+  const parts = [];
   for (let i = 0; i < 4; i++) {
-    document.getElementById(`step-${i}`).style.display = 'block';
+    const el = document.getElementById(`step-${i}`);
+    if (el) {
+      parts.push(
+        `<div style="margin-bottom:20px;border:1px solid #E4E7F4;border-radius:12px;padding:14px;overflow:hidden;">` +
+        `<div style="font-size:11px;font-weight:800;color:#6C5CE7;margin-bottom:10px;">단계 ${i + 1}</div>${el.innerHTML}</div>`
+      );
+    }
   }
-
-  /* 서명란 추가 */
-  const signEl = document.getElementById('sign-area');
-  if (!signEl) {
-    const div = document.createElement('div');
-    div.id = 'sign-area';
-    div.className = 'sign-area';
-    div.innerHTML = `
-      <div class="sign-box">
-        <div class="sign-label">담당 작업치료사</div>
-        <div class="sign-line">${therapist || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'} (서명)</div>
-      </div>`;
-    document.querySelector('.page').appendChild(div);
-  }
-
-  setTimeout(() => {
-    window.print();
-    /* 인쇄 후 원상복구 */
-    setTimeout(() => {
-      document.getElementById('pdf-header').style.display = 'none';
-      for (let i = 0; i < 4; i++) {
-        document.getElementById(`step-${i}`).style.display = i === currentStep ? 'block' : 'none';
-      }
-    }, 500);
-  }, 200);
+  return parts.join('');
 }
 
 /* ═══════════════════════════════════════════
@@ -1332,6 +1297,18 @@ function getSession() {
   try { return JSON.parse(sessionStorage.getItem('ot_session') || '{}'); } catch(e) { return {}; }
 }
 
+function persistToolReport() {
+  try {
+    const sess = getSession();
+    if (!sess.reportByTool) sess.reportByTool = {};
+    sess.reportByTool[window._TOOL_ID] = {
+      title: REPORT_SECTION_TITLE,
+      html: typeof buildToolReportHtml === 'function' ? buildToolReportHtml() : ''
+    };
+    sessionStorage.setItem('ot_session', JSON.stringify(sess));
+  } catch (e) {}
+}
+
 function getCurrentToolIndex() {
   const sess = getSession();
   const ready = sess.ready || [];
@@ -1340,6 +1317,7 @@ function getCurrentToolIndex() {
 }
 
 function goNextTool() {
+  persistToolReport();
   const sess = getSession();
   const ready = sess.ready || [];
   const cur   = getCurrentToolIndex();
@@ -1355,8 +1333,7 @@ function goNextTool() {
     const route = ROUTE_MAP[nextId];
     if (route) window.location.href = route;
   } else {
-    // 마지막 도구 → 허브로 복귀
-    window.location.href = 'hub.html';
+    window.location.href = 'report.html';
   }
 }
 

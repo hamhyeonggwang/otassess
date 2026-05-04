@@ -568,14 +568,7 @@ select.form-input {
 <!-- 하단 네비 바 -->
 <div class="nav-bar">
   <div class="nav-info">완료 <span id="nav-done">0</span> / <span id="nav-total">33</span></div>
-  <button class="btn-pdf" id="btn-pdf" onclick="exportPDF()">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <polyline points="6 9 6 2 18 2 18 9" stroke-width="1.5"/>
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke-width="1.5"/>
-      <rect x="6" y="14" width="12" height="8" stroke-width="1.5"/>
-    </svg>
-    PDF 출력
-  </button>
+  <span style="font-size:11px;color:var(--t3);max-width:200px;text-align:right;line-height:1.35;">PDF는 전체 평가 완료 후 종합 보고서에서 저장</span>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -855,19 +848,18 @@ function updateProgress() {
   document.getElementById('sum-fill').style.width  = `${pct}%`;
   document.getElementById('progress-fill').style.width = `${pct}%`;
 
-  document.getElementById('btn-pdf').classList.toggle('all-done', done === total && total > 0);
 }
 
 /* ═══════════════════════════════════════
-   PDF 출력
+   종합 보고서용 HTML 스냅샷
 ═══════════════════════════════════════ */
-function exportPDF() {
+const REPORT_SECTION_TITLE = 'HFT 임상관찰 평가';
+
+function buildToolReportHtml() {
   const name      = document.getElementById('f-name').value.trim()      || '(미입력)';
   const date      = document.getElementById('f-date').value             || '';
-  const therapist = document.getElementById('f-therapist').value.trim() || '';
   const diagnosis = document.getElementById('f-diagnosis').value.trim() || '—';
   const comment   = document.getElementById('global-comment').value.trim();
-  const today     = new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
 
   const activeItems = ITEMS.filter(it => it.ages.includes(currentAge));
   let done = 0;
@@ -877,58 +869,30 @@ function exportPDF() {
     else if (!item.bi && answers[idx].rt !== null && answers[idx].lt !== null) done++;
   });
 
-  // PDF 헤더
-  document.getElementById('pdf-header').style.display = 'flex';
-  document.getElementById('pdf-meta').innerHTML =
-    `작성일: ${today}<br><strong>푸르메재단 넥슨어린이재활병원</strong><br>담당: ${therapist}`;
-
-  // 요약 블록
-  const summaryEl = document.getElementById('pdf-summary');
-  summaryEl.style.display = 'block';
-  summaryEl.innerHTML = `
-    <div style="display:flex;gap:16px;padding:12px 18px;
-      background:var(--accent-dim);border-radius:10px;border:1px solid var(--accent-ring);margin-bottom:14px;">
+  return `
+    <div style="display:flex;gap:16px;padding:12px 18px;flex-wrap:wrap;
+      background:#EDEAFD;border-radius:10px;border:1px solid rgba(108,92,231,.15);margin-bottom:14px;">
       <div>
-        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">대상자</div>
-        <div style="font-size:16px;font-weight:800;color:var(--t1);">${name}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:2px;">${diagnosis} &nbsp;·&nbsp; ${date}</div>
+        <div style="font-size:10px;font-weight:700;color:#9896B8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">대상자</div>
+        <div style="font-size:16px;font-weight:800;color:#1E1B3A;">${name}</div>
+        <div style="font-size:11px;color:#9896B8;margin-top:2px;">${diagnosis} &nbsp;·&nbsp; ${date}</div>
       </div>
-      <div style="border-left:1px solid var(--accent-ring);padding-left:16px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:2px;">연령구간</div>
-        <div style="font-size:16px;font-weight:800;color:var(--accent);">${AGE_LABELS[currentAge]}</div>
+      <div style="border-left:1px solid rgba(108,92,231,.15);padding-left:16px;">
+        <div style="font-size:10px;font-weight:700;color:#9896B8;text-transform:uppercase;margin-bottom:2px;">연령구간</div>
+        <div style="font-size:16px;font-weight:800;color:#6C5CE7;">${AGE_LABELS[currentAge]}</div>
       </div>
-      <div style="border-left:1px solid var(--accent-ring);padding-left:16px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:2px;">우세손</div>
-        <div style="font-size:16px;font-weight:800;color:var(--accent);">${dominant}.</div>
+      <div style="border-left:1px solid rgba(108,92,231,.15);padding-left:16px;">
+        <div style="font-size:10px;font-weight:700;color:#9896B8;text-transform:uppercase;margin-bottom:2px;">우세손</div>
+        <div style="font-size:16px;font-weight:800;color:#6C5CE7;">${dominant}.</div>
       </div>
-      <div style="border-left:1px solid var(--accent-ring);padding-left:16px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:2px;">완료</div>
-        <div style="font-size:16px;font-weight:800;color:var(--green);">${done} / ${activeItems.length}</div>
+      <div style="border-left:1px solid rgba(108,92,231,.15);padding-left:16px;">
+        <div style="font-size:10px;font-weight:700;color:#9896B8;text-transform:uppercase;margin-bottom:2px;">완료</div>
+        <div style="font-size:16px;font-weight:800;color:#00A86B;">${done} / ${activeItems.length}</div>
       </div>
     </div>
     ${comment ? `<div style="padding:10px 14px;background:#f5f5f5;border-radius:8px;
-      border-left:3px solid var(--accent);font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:14px;">
+      border-left:3px solid #6C5CE7;font-size:12px;color:#4A4770;line-height:1.6;margin-bottom:14px;">
       <strong>Comment:</strong> ${comment}</div>` : ''}`;
-
-  // 서명란
-  if (!document.getElementById('sign-area')) {
-    const div = document.createElement('div');
-    div.id = 'sign-area'; div.className = 'sign-area';
-    div.innerHTML = `
-      <div class="sign-box">
-        <div class="sign-label">담당 작업치료사</div>
-        <div class="sign-line">${therapist || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'} (서명)</div>
-      </div>`;
-    document.querySelector('.page').appendChild(div);
-  }
-
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => {
-      document.getElementById('pdf-header').style.display  = 'none';
-      document.getElementById('pdf-summary').style.display = 'none';
-    }, 600);
-  }, 200);
 }
 
 /* ═══════════════════════════════════════
@@ -957,6 +921,18 @@ function getSession() {
   try { return JSON.parse(sessionStorage.getItem('ot_session') || '{}'); } catch(e) { return {}; }
 }
 
+function persistToolReport() {
+  try {
+    const sess = getSession();
+    if (!sess.reportByTool) sess.reportByTool = {};
+    sess.reportByTool[window._TOOL_ID] = {
+      title: REPORT_SECTION_TITLE,
+      html: typeof buildToolReportHtml === 'function' ? buildToolReportHtml() : ''
+    };
+    sessionStorage.setItem('ot_session', JSON.stringify(sess));
+  } catch (e) {}
+}
+
 function getCurrentToolIndex() {
   const sess = getSession();
   const ready = sess.ready || [];
@@ -965,6 +941,7 @@ function getCurrentToolIndex() {
 }
 
 function goNextTool() {
+  persistToolReport();
   const sess = getSession();
   const ready = sess.ready || [];
   const cur   = getCurrentToolIndex();
@@ -980,8 +957,7 @@ function goNextTool() {
     const route = ROUTE_MAP[nextId];
     if (route) window.location.href = route;
   } else {
-    // 마지막 도구 → 허브로 복귀
-    window.location.href = 'hub.html';
+    window.location.href = 'report.html';
   }
 }
 

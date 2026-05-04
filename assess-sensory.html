@@ -713,14 +713,7 @@ body {
       <path d="M9 18l6-6-6-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </button>
-  <button class="btn-pdf" onclick="exportPDF()">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <polyline points="6 9 6 2 18 2 18 9" stroke-width="1.5"/>
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke-width="1.5"/>
-      <rect x="6" y="14" width="12" height="8" stroke-width="1.5"/>
-    </svg>
-    PDF
-  </button>
+  <span style="font-size:10px;color:var(--t3);max-width:120px;text-align:right;line-height:1.3;">PDF는 전체 완료 후 종합 보고서</span>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1072,25 +1065,19 @@ function updateProgress() {
 }
 
 /* ═══════════════════════════════════════
-   PDF 출력
+   종합 보고서용 HTML 스냅샷
 ═══════════════════════════════════════ */
-function exportPDF() {
+const REPORT_SECTION_TITLE = '감각운동협응검사 (BBT · BPIT · RLO · Grip)';
+
+function buildToolReportHtml() {
   const name      = document.getElementById('f-name').value.trim()      || '(미입력)';
   const date      = document.getElementById('f-date').value             || '';
   const therapist = document.getElementById('f-therapist').value.trim() || '';
-  const today     = new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
 
-  // PDF 헤더
-  document.getElementById('pdf-header').style.display = 'flex';
-  document.getElementById('pdf-meta').innerHTML =
-    `작성일: ${today}<br><strong>푸르메재단 넥슨어린이재활병원</strong><br>담당: ${therapist}`;
-
-  // 요약 블록 생성
   const bptTotal = BPIT_PARTS.filter(p => bpitState[p] === true).length;
   const bbtRtVal = document.getElementById('bbt-rt').value || '—';
   const bbtLtVal = document.getElementById('bbt-lt').value || '—';
 
-  // Grip 평균 수집
   const gripSummary = GRIP_ITEMS.map(g => {
     const rVals = gripState[g.id].r.filter(v => v !== null);
     const lVals = gripState[g.id].l.filter(v => v !== null);
@@ -1099,10 +1086,8 @@ function exportPDF() {
     return { name: g.name, rAvg, lAvg };
   });
 
-  const summaryEl = document.getElementById('pdf-summary');
-  summaryEl.style.display = 'block';
-  summaryEl.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+  return `
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px;">
       <div style="padding:12px 14px;background:#E0F8F3;border-radius:8px;border:1px solid #00B89440;">
         <div style="font-size:9px;font-weight:700;color:#006B44;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">BBT</div>
         <div style="font-size:13px;color:#1E1B3A;">
@@ -1133,33 +1118,6 @@ function exportPDF() {
     <div style="font-size:10px;color:#9896B8;margin-bottom:14px;">
       대상자: <strong>${name}</strong> &nbsp;·&nbsp; 평가일: ${date} &nbsp;·&nbsp; 담당: ${therapist}
     </div>`;
-
-  // 모든 패널 표시
-  TABS.forEach(t => document.getElementById(`panel-${t}`).classList.add('active'));
-
-  // 서명란
-  if (!document.getElementById('sign-area')) {
-    const div = document.createElement('div');
-    div.id = 'sign-area'; div.className = 'sign-area';
-    div.innerHTML = `
-      <div class="sign-box">
-        <div class="sign-label">담당 작업치료사</div>
-        <div class="sign-line">${therapist || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'} (서명)</div>
-      </div>`;
-    document.querySelector('.page').appendChild(div);
-  }
-
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => {
-      document.getElementById('pdf-header').style.display  = 'none';
-      document.getElementById('pdf-summary').style.display = 'none';
-      // 현재 탭만 다시 표시
-      TABS.forEach((t, i) => {
-        document.getElementById(`panel-${t}`).classList.toggle('active', i === currentTab);
-      });
-    }, 600);
-  }, 200);
 }
 
 /* ═══════════════════════════════════════
@@ -1185,6 +1143,18 @@ function getSession() {
   try { return JSON.parse(sessionStorage.getItem('ot_session') || '{}'); } catch(e) { return {}; }
 }
 
+function persistToolReport() {
+  try {
+    const sess = getSession();
+    if (!sess.reportByTool) sess.reportByTool = {};
+    sess.reportByTool[window._TOOL_ID] = {
+      title: REPORT_SECTION_TITLE,
+      html: typeof buildToolReportHtml === 'function' ? buildToolReportHtml() : ''
+    };
+    sessionStorage.setItem('ot_session', JSON.stringify(sess));
+  } catch (e) {}
+}
+
 function getCurrentToolIndex() {
   const sess = getSession();
   const ready = sess.ready || [];
@@ -1193,6 +1163,7 @@ function getCurrentToolIndex() {
 }
 
 function goNextTool() {
+  persistToolReport();
   const sess = getSession();
   const ready = sess.ready || [];
   const cur   = getCurrentToolIndex();
@@ -1208,8 +1179,7 @@ function goNextTool() {
     const route = ROUTE_MAP[nextId];
     if (route) window.location.href = route;
   } else {
-    // 마지막 도구 → 허브로 복귀
-    window.location.href = 'hub.html';
+    window.location.href = 'report.html';
   }
 }
 
