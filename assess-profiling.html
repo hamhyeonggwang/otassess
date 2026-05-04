@@ -1188,54 +1188,7 @@ function goNextTool() {
   }
 }
 
-function renderSessionNav() {
-  const sess = getSession();
-  const ready = sess.ready || [];
-  const cur   = getCurrentToolIndex();
-  if (ready.length === 0 || cur < 0) return;
-
-  const isLast = cur === ready.length - 1;
-  const pct    = Math.round((cur + 1) / ready.length * 100);
-
-  // 세션 네비게이션 바 삽입
-  const bar = document.createElement('div');
-  bar.id = 'session-nav-bar';
-  bar.innerHTML = `
-    <div style="background:var(--surface,#fff);border-bottom:1px solid var(--border,#E4E7F4);
-      padding:10px 24px;display:flex;align-items:center;gap:12px;
-      position:sticky;top:60px;z-index:95;">
-      <div style="flex:1;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;
-          color:var(--t3,#9896B8);margin-bottom:5px;">
-          <span>${cur + 1} / ${ready.length} 번째 평가</span>
-          <span>${pct}%</span>
-        </div>
-        <div style="height:4px;background:var(--border,#E4E7F4);border-radius:2px;overflow:hidden;">
-          <div style="height:100%;width:${pct}%;background:var(--accent,#6C5CE7);border-radius:2px;
-            transition:width .4s ease;"></div>
-        </div>
-      </div>
-      <button onclick="goNextTool()" style="
-        height:40px;padding:0 18px;border-radius:var(--r-sm,10px);border:none;
-        background:var(--accent,#6C5CE7);color:#fff;
-        font-family:var(--font,'Pretendard',sans-serif);font-size:13px;font-weight:700;
-        cursor:pointer;display:flex;align-items:center;gap:6px;flex-shrink:0;
-        transition:opacity .15s;">
-        ${isLast ? '평가 완료 →' : '다음 평가 →'}
-      </button>
-    </div>`;
-
-  // topbar 아래에 삽입
-  const topbar = document.querySelector('.topbar');
-  if (topbar && topbar.nextSibling) {
-    topbar.parentNode.insertBefore(bar, topbar.nextSibling.nextSibling || topbar.nextSibling);
-  }
-}
-
-// DOM 로드 후 실행
-document.addEventListener('DOMContentLoaded', function() {
-  renderSessionNav();
-});
 </script>
+<script src="session-sidebar.js" defer></script>
 </body>
 </html>
